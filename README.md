@@ -1,7 +1,8 @@
 # Computer Notebook Format Proposal
 
 Keywords: specification, computer science, organization, important
-Individuals: Shawn Garbett
+
+People: Shawn Garbett
 
 ## Introduction
 

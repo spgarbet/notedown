@@ -11,7 +11,7 @@ A open sources means of storing and indexing notes in a simple manner on a compu
 ## Proposal
 
 1. The notebook will be entirely contained within a single directory. Henceforth called `notebook` but could have any name a user wants. 
-2. A note is stored in a subdirectory heirarchy YYYY/MM/DD.
+2. A note is stored in a sub-directory hierarchy YYYY/MM/DD.
     1. Any accompanying pictures or artifacts are stored in the same directory.
     2. These can be symbolic links to assets external to the `notebook` directory. *Note: The user must be careful that they have organized and intend to keep those external assets for the notebook to remain intact once symbolic links are utilized.*
 3. A note is a modified [extended markdown](https://www.markdownguide.org).

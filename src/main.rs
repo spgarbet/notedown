@@ -67,7 +67,6 @@ fn token(line: &str) -> Token
     else if line.starts_with("````") { Token::L }
     else if line.starts_with("```")  { Token::C }
     else if topic_re.is_match(line)  { Token::T }
-    //else if line.contains(":")       { Token::T }
     else                             { Token::O }
 }
 
@@ -116,11 +115,23 @@ where P: AsRef<Path>,
     Ok(io::BufReader::new(file).lines())
 }
 
+fn parse_topic(line: &str) -> Topic
+{
+    let mut iter = line.split(":");
+    match iter.next()
+    {
+        None       => panic!("Malformed topic parse"),
+        Some(name) => Topic {
+                              name:    String::from(name.trim()),
+                              entries: iter.next().expect("REASON").split(",").map(|x|x.trim().to_string()).collect(),  
+                            }
+    }
+}
+
 fn parse(path: &Path, date: NaiveDate) -> Vec<Note>
 {
-    let notes : Vec<Note> = Vec::new();
+    let mut notes : Vec<Note> = Vec::new();
     let mut state : Token = Token::O;
-    let mut cur   : Token = Token::O;
 
     match read_lines(path)
     { 
@@ -132,8 +143,27 @@ fn parse(path: &Path, date: NaiveDate) -> Vec<Note>
                 Err(why) => panic!("read failure {}: {}", path.display(), why),
                 Ok(ip)   => 
                 {
-                  (state,  cur) = tokenizer(state, &ip);
-                  println!("{}", cur);
+                    let mut cur;
+                    (state,  cur) = tokenizer(state, &ip);
+                    // println!("{}", cur);
+                    if cur == Token::H
+                    {
+                        notes.push(
+                            Note {
+                                title: String::from(&ip[2..]),
+                                path:  Box::from(path.clone()), 
+                                date:  date,
+                                topics: Vec::new()
+                            } 
+                        )
+                    }
+                    else if cur == Token::T
+                    {
+                        if let Some(last) = notes.last_mut()
+                        {
+                            last.topics.push(parse_topic(&ip));
+                        }
+                    }
                 }
             } 
         }
@@ -153,7 +183,7 @@ fn main()
         title:String::from("First Note"),
         path:Box::from(Path::new("README.md")),
         date:NaiveDate::from_ymd(2022, 10, 31),
-        topics:Vec::new()
+        topics:Vec::new(),
     };
     dbg!(note1);
 

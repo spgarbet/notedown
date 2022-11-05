@@ -1,16 +1,22 @@
 use std::env;
 use std::fs::File;
 use std::path::Path;
-use std::fmt;
 use regex::Regex;
 use std::io::{self, BufRead};
-use chrono::{NaiveDate}; //, Datelike};
+use chrono::NaiveDate; //, Datelike};
+use glob::glob;
+use serde::Serialize;
+use std::hash;
+
+#[macro_use]
+extern crate enum_display_derive;
+use std::fmt::Display;
 
   /////////////////////////////////////////////////////////////////////////////
  //
 // Declare Structures
 //
-#[derive(PartialEq)]
+#[derive(PartialEq, Display, Serialize)]
 enum Token 
 {
     H, // Header
@@ -21,35 +27,18 @@ enum Token
     O, // Other
 }
 
-impl fmt::Display for Token
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
-        match *self
-        {
-            Token::H => write!(f, "H"),
-            Token::S => write!(f, "S"),
-            Token::L => write!(f, "L"),
-            Token::C => write!(f, "C"),
-            Token::T => write!(f, "T"),
-            Token::O => write!(f, "O"),
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug,Serialize)]
 struct Topic 
 {
   name:    String,
   entries: Vec<String>
 }
 
-#[derive(Debug)]
+#[derive(Debug,Serialize)]
 struct Note
 {
   title:   String,
   path:    Box<Path>,
-  // https://docs.rs/chrono/0.4.22/chrono/naive/struct.NaiveDate.html#calendar-date  
   date:    NaiveDate,
   topics:  Vec<Topic>   
 }
@@ -123,7 +112,11 @@ fn parse_topic(line: &str) -> Topic
         None       => panic!("Malformed topic parse"),
         Some(name) => Topic {
                               name:    String::from(name.trim()),
-                              entries: iter.next().expect("REASON").split(",").map(|x|x.trim().to_string()).collect(),  
+                              entries: iter.next()
+                                           .expect("Topic should have entries")
+                                           .split(",")
+                                           .map(|x|x.trim().to_string())
+                                           .collect(),  
                             }
     }
 }
@@ -143,7 +136,7 @@ fn parse(path: &Path, date: NaiveDate) -> Vec<Note>
                 Err(why) => panic!("read failure {}: {}", path.display(), why),
                 Ok(ip)   => 
                 {
-                    let mut cur;
+                    let cur;
                     (state,  cur) = tokenizer(state, &ip);
                     // println!("{}", cur);
                     if cur == Token::H
@@ -172,23 +165,38 @@ fn parse(path: &Path, date: NaiveDate) -> Vec<Note>
     notes
 }
 
+fn extract_date(path: &str) -> NaiveDate
+{
+    let reg: Regex = Regex::new(r".*/([0-9]{4}/[0-9]{2}/[0-9]{2})/.*\.md$").unwrap();
+    let date_str = reg.captures(path)
+                      .ok_or(0)
+                      .unwrap()
+                      .get(1)
+                      .map_or("", |m| m.as_str());
+
+    NaiveDate::parse_from_str(date_str, "%Y/%m/%d").unwrap()
+}
 
 fn main()
 {
     let args: Vec<String> = env::args().collect();
-    //dbg!(args);
 
-    let note1 = Note 
+    let mut stuff = Vec::new();
+
+    for y in glob(format!("{}/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/*.md", &args[1]).as_str())
+        .expect("Failed to read glob pattern")
     {
-        title:String::from("First Note"),
-        path:Box::from(Path::new("README.md")),
-        date:NaiveDate::from_ymd(2022, 10, 31),
-        topics:Vec::new(),
-    };
-    dbg!(note1);
-
-    let stuff = parse(Path::new(&args[1]), NaiveDate::from_ymd(2022, 10, 31));
-    dbg!(stuff);
-
+        if let Ok(x) = y
+        {
+            for z in parse(&x, extract_date(x.to_str().unwrap()))
+            {
+                stuff.push(z);
+            }
+        }
+    }
+    stuff.sort_by(|a,b| a.date.cmp(&b.date));
+ 
+    let out = serde_json::to_string(&stuff).unwrap();
+    println!("{}", out);    
 }
  

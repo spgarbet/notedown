@@ -6,7 +6,9 @@ use std::io::{self, BufRead};
 use chrono::NaiveDate; //, Datelike};
 use glob::glob;
 use serde::Serialize;
-use std::hash;
+//use std::collections::HashMap;
+use std::collections::BTreeSet;
+//use std::collections::BTreeMap;
 
 #[macro_use]
 extern crate enum_display_derive;
@@ -16,7 +18,7 @@ use std::fmt::Display;
  //
 // Declare Structures
 //
-#[derive(PartialEq, Display, Serialize)]
+#[derive(PartialEq, Display)]
 enum Token 
 {
     H, // Header
@@ -27,20 +29,34 @@ enum Token
     O, // Other
 }
 
-#[derive(Debug,Serialize)]
+#[derive(Debug,Serialize,Clone)]
 struct Topic 
 {
-  name:    String,
-  entries: Vec<String>
+    name:    String,
+    entries: Vec<String>
 }
 
-#[derive(Debug,Serialize)]
+#[derive(Debug,Serialize,Clone)]
 struct Note
 {
-  title:   String,
-  path:    Box<Path>,
-  date:    NaiveDate,
-  topics:  Vec<Topic>   
+    title:   String,
+    path:    Box<Path>,
+    date:    NaiveDate,
+    topics:  Vec<Topic>   
+}
+
+impl Note
+{
+    fn stub(&self) -> Note
+    {
+        Note
+        {
+            title:   self.title.clone(),
+            path:    self.path.clone(),
+            date:    self.date.clone(),
+            topics:  Vec::new()
+       }
+    }
 }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -177,6 +193,78 @@ fn extract_date(path: &str) -> NaiveDate
     NaiveDate::parse_from_str(date_str, "%Y/%m/%d").unwrap()
 }
 
+  /////////////////////////////////////////////////////////////////////////////
+ //
+// Cross Indexer
+//
+
+// https://stackoverflow.com/questions/30414424/how-can-i-update-a-value-in-a-mutable-hashmap
+// https://codereview.stackexchange.com/questions/272443/how-do-i-get-the-unique-list-of-values-from-a-hashmap-in-rust
+fn topics(notes: &Vec<Note>) -> BTreeSet<String>
+{
+    notes.iter().map(|n| n.topics.iter().map(|t| t.name.clone())).flatten().collect()
+}
+
+fn entries(notes: &Vec<Note>, topic: &String) -> BTreeSet<(String, String, String)>
+{
+    notes.iter().map(|n| n.topics
+                          .iter()
+                          .filter(|t| t.name == *topic)
+                          .map(|t| t.entries
+                                    .iter()
+                                    .map(|e| (e.clone(),
+                                              n.title.clone(),
+                                              String::from(n.path.to_str().unwrap().clone())))
+                              )
+                          .flatten()
+                    )
+                .flatten()
+                .collect()
+}
+
+//fn cross_index(notes: &Vec<Note>) -> 
+//        HashMap<String,&mut HashMap<String,&mut Vec<Note>>>
+//{
+//    let mut hm: HashMap<String,&mut HashMap<String,&mut Vec<Note>>> = HashMap::new();
+//
+//    // For each topic, entry in source
+//    for n in notes
+//    {
+//        for t in &n.topics
+//        {
+//            // If topic exists, use, otherwise add new topic.
+//            let ht: &mut HashMap<String, &mut Vec<Note>>  = match hm.get(&t.name)
+//            {
+//                Some(ht_) => ht_,
+//                None =>
+//                {
+//                    let mut ht_:HashMap<String,&mut Vec<Note>> = HashMap::new();
+//                    hm.insert(String::from(&t.name), ht_);
+//                    hm.get(&t.name).ok_or(0).unwrap()
+//                }
+//            }; 
+//            // For each entry if exists, use, otherwise add new entry.
+//            for e in &t.entries
+//            {
+//                match ht.get(e)
+//                {
+//                    Some(he) => he.push(n.mini_me()),
+//                    None     => 
+//                    { 
+//                         let mut he_:Vec<Note> = Vec::new();
+//                         he_.push(n.mini_me());
+//                         ht.insert(String::from(e), &mut he_);
+//                    }
+//                }
+//            }
+//        };
+//  };
+//  // Add Note to entry. 
+//
+//  // Return 
+//  hm
+//}
+
 fn main()
 {
     let args: Vec<String> = env::args().collect();
@@ -198,5 +286,8 @@ fn main()
  
     let out = serde_json::to_string(&stuff).unwrap();
     println!("{}", out);    
+
+    dbg!(topics(&stuff));
+    dbg!(entries(&stuff, &String::from("Keywords")));
 }
  

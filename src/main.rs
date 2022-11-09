@@ -3,15 +3,22 @@ use std::fs::File;
 use std::path::Path;
 use regex::Regex;
 use std::io::{self, BufRead};
-use chrono::NaiveDate; //, Datelike};
+use chrono::{NaiveDate, Datelike};
 use glob::glob;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::collections::BTreeSet;
 use std::collections::BTreeMap;
+use std::convert::From;
 
 #[macro_use]
 extern crate enum_display_derive;
 use std::fmt::Display;
+
+
+//
+// Output target?
+//https://stackoverflow.com/questions/28367993/jekyll-level-3-submenu#28434612
 
   /////////////////////////////////////////////////////////////////////////////
  //
@@ -44,17 +51,14 @@ struct Note
     topics:  Vec<Topic>   
 }
 
-impl Note
+impl From<&Note> for HashMap<String,String>
 {
-    fn stub(&self) -> Note
-    {
-        Note
-        {
-            title:   self.title.clone(),
-            path:    self.path.clone(),
-            date:    self.date.clone(),
-            topics:  Vec::new()
-       }
+    fn from(n: &Note) -> Self
+    {HashMap::from(
+        [   (String::from("title"), n.title.clone()),
+            (String::from("href"), String::from(n.path.to_str().unwrap().clone())),
+            (String::from("date"), n.date.to_string()),
+        ])
     }
 }
 
@@ -201,15 +205,21 @@ fn extract_date(path: &str) -> NaiveDate
 // https://codereview.stackexchange.com/questions/272443/how-do-i-get-the-unique-list-of-values-from-a-hashmap-in-rust
 fn topics(notes: &Vec<Note>) -> BTreeSet<String>
 {
-    notes.iter().map(|n| n.topics.iter().map(|t| t.name.clone())).flatten().collect()
+    notes.iter()
+         .map(|n| n.topics
+                   .iter()
+                   .map(|t| t.name.clone())
+             )
+         .flatten()
+         .collect()
 }
 
 
 // Clear method: https://stackoverflow.com/questions/33243784/append-to-vector-as-value-of-hashmap
 fn entries(notes: &Vec<Note>, topic: &String) -> 
-   BTreeMap<String, Vec<(String, String)>>
+   BTreeMap<String, Vec<HashMap<String, String>>>
 {
-    let mut dict:BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+    let mut dict:BTreeMap<String, Vec<HashMap<String, String>>> = BTreeMap::new();
 
     for n in notes
     { 
@@ -219,10 +229,7 @@ fn entries(notes: &Vec<Note>, topic: &String) ->
             {
                 dict.entry(e.clone())
                     .or_insert(Vec::new())
-                    .push( (n.title.clone(),
-                            String::from(n.path.to_str().unwrap().clone())
-                           )
-                         )
+                    .push( HashMap::from(n))
             } 
         }
     }
@@ -234,7 +241,7 @@ fn main()
 {
     let args: Vec<String> = env::args().collect();
 
-    let mut stuff = Vec::new();
+    let mut notes = Vec::new();
 
     for y in glob(format!("{}/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/*.md", &args[1]).as_str())
         .expect("Failed to read glob pattern")
@@ -243,16 +250,29 @@ fn main()
         {
             for z in parse(&x, extract_date(x.to_str().unwrap()))
             {
-                stuff.push(z);
+                notes.push(z);
             }
         }
     }
-    stuff.sort_by(|a,b| a.date.cmp(&b.date));
+    notes.sort_by(|a,b| a.date.cmp(&b.date));
  
-    let out = serde_json::to_string(&stuff).unwrap();
-    println!("{}", out);    
-
-    dbg!(topics(&stuff));
-    dbg!(entries(&stuff, &String::from("Keywords")));
+    let topics = topics(&notes);
+    
+    let mut dict = BTreeMap::new();
+    for n in &notes
+    {
+        let year:  String = n.date.year().to_string().clone();
+        let month: String = n.date.month().to_string().clone();
+        dict.entry(year)
+            .or_insert(BTreeMap::new())
+            .entry(month)
+            .or_insert(Vec::new())
+            .push(HashMap::from(n));
+    }
+    for t in topics
+    {
+        dict.insert(t.clone(), entries(&notes, &t));
+    }
+    println!("{}", serde_yaml::to_string(&dict).unwrap());
 }
  

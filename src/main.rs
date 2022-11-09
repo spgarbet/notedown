@@ -6,9 +6,8 @@ use std::io::{self, BufRead};
 use chrono::NaiveDate; //, Datelike};
 use glob::glob;
 use serde::Serialize;
-//use std::collections::HashMap;
 use std::collections::BTreeSet;
-//use std::collections::BTreeMap;
+use std::collections::BTreeMap;
 
 #[macro_use]
 extern crate enum_display_derive;
@@ -205,65 +204,31 @@ fn topics(notes: &Vec<Note>) -> BTreeSet<String>
     notes.iter().map(|n| n.topics.iter().map(|t| t.name.clone())).flatten().collect()
 }
 
-fn entries(notes: &Vec<Note>, topic: &String) -> BTreeSet<(String, String, String)>
-{
-    notes.iter().map(|n| n.topics
-                          .iter()
-                          .filter(|t| t.name == *topic)
-                          .map(|t| t.entries
-                                    .iter()
-                                    .map(|e| (e.clone(),
-                                              n.title.clone(),
-                                              String::from(n.path.to_str().unwrap().clone())))
-                              )
-                          .flatten()
-                    )
-                .flatten()
-                .collect()
-}
 
-//fn cross_index(notes: &Vec<Note>) -> 
-//        HashMap<String,&mut HashMap<String,&mut Vec<Note>>>
-//{
-//    let mut hm: HashMap<String,&mut HashMap<String,&mut Vec<Note>>> = HashMap::new();
-//
-//    // For each topic, entry in source
-//    for n in notes
-//    {
-//        for t in &n.topics
-//        {
-//            // If topic exists, use, otherwise add new topic.
-//            let ht: &mut HashMap<String, &mut Vec<Note>>  = match hm.get(&t.name)
-//            {
-//                Some(ht_) => ht_,
-//                None =>
-//                {
-//                    let mut ht_:HashMap<String,&mut Vec<Note>> = HashMap::new();
-//                    hm.insert(String::from(&t.name), ht_);
-//                    hm.get(&t.name).ok_or(0).unwrap()
-//                }
-//            }; 
-//            // For each entry if exists, use, otherwise add new entry.
-//            for e in &t.entries
-//            {
-//                match ht.get(e)
-//                {
-//                    Some(he) => he.push(n.mini_me()),
-//                    None     => 
-//                    { 
-//                         let mut he_:Vec<Note> = Vec::new();
-//                         he_.push(n.mini_me());
-//                         ht.insert(String::from(e), &mut he_);
-//                    }
-//                }
-//            }
-//        };
-//  };
-//  // Add Note to entry. 
-//
-//  // Return 
-//  hm
-//}
+// Clear method: https://stackoverflow.com/questions/33243784/append-to-vector-as-value-of-hashmap
+fn entries(notes: &Vec<Note>, topic: &String) -> 
+   BTreeMap<String, Vec<(String, String)>>
+{
+    let mut dict:BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+
+    for n in notes
+    { 
+        for t in n.topics.iter().filter(|t| t.name == *topic)
+        {
+            for e in &t.entries
+            {
+                dict.entry(e.clone())
+                    .or_insert(Vec::new())
+                    .push( (n.title.clone(),
+                            String::from(n.path.to_str().unwrap().clone())
+                           )
+                         )
+            } 
+        }
+    }
+
+    dict
+}
 
 fn main()
 {

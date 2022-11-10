@@ -3,7 +3,7 @@ use std::fs::File;
 use std::path::Path;
 use regex::Regex;
 use std::io::{self, BufRead};
-use chrono::{NaiveDate, Datelike};
+use chrono::{NaiveDate,Datelike};
 use glob::glob;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -261,8 +261,8 @@ fn main()
     let mut dict = BTreeMap::new();
     for n in &notes
     {
-        let year:  String = n.date.year().to_string().clone();
-        let month: String = n.date.month().to_string().clone();
+        let year:  String = format!("{:04}", n.date.year());
+        let month: String = format!("{:02}", n.date.month());
         dict.entry(year)
             .or_insert(BTreeMap::new())
             .entry(month)

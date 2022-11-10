@@ -15,10 +15,8 @@ use std::convert::From;
 extern crate enum_display_derive;
 use std::fmt::Display;
 
-
-//
 // Output target?
-//https://stackoverflow.com/questions/28367993/jekyll-level-3-submenu#28434612
+// https://stackoverflow.com/questions/28367993/jekyll-level-3-submenu#28434612
 
   /////////////////////////////////////////////////////////////////////////////
  //
@@ -61,6 +59,8 @@ impl From<&Note> for HashMap<String,String>
         ])
     }
 }
+
+
 
   /////////////////////////////////////////////////////////////////////////////
  //

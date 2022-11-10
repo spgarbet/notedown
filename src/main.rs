@@ -55,7 +55,7 @@ impl From<&Note> for HashMap<String,String>
     {HashMap::from(
         [   (String::from("title"), n.title.clone()),
             (String::from("href"), String::from(n.path.to_str().unwrap().clone())),
-            (String::from("date"), n.date.to_string()),
+            (String::from("date"), n.date.format("%Y-%m-%d").to_string()),
         ])
     }
 }

@@ -254,7 +254,7 @@ fn main()
             }
         }
     }
-    notes.sort_by(|a,b| a.date.cmp(&b.date));
+    notes.sort_by(|a,b| b.date.cmp(&a.date));
  
     let topics = topics(&notes);
     

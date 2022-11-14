@@ -18,6 +18,7 @@ title: Test
     flex: 1;
 }
 </style>
+<script src="jquery-3.6.1.min.js"></script>
 </head>
 <body>
 
@@ -32,8 +33,8 @@ title: Test
   <ul>
   {% assign tops = site.data.menu[key] | keys %}
   {% for t in tops %}
-  <li><h3>{{ t }}</h3>
-    <ul>
+  <li onclick="$('ul#{{key}}{{t}}').toggle()"><h3>{{ t }} <small>({{site.data.menu[key][t] | size}})</small></h3>
+    <ul id="{{key}}{{t}}">
     {% for e in site.data.menu[key][t] %}
     <li><small>{{e.date}}</small> <a href="file://{{e.href}}">{{e.title}}</a></li>
     {% endfor %}
